@@ -624,6 +624,7 @@ public:
   //***************************************************************************
   // constructors
   OsiIpoptSolverInterface();
+  OsiIpoptSolverInterface(OsiConicSolverInterface const * other);
   // destructor
   virtual ~OsiIpoptSolverInterface();
 

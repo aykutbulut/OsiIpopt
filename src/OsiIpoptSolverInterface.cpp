@@ -1101,6 +1101,35 @@ OsiIpoptSolverInterface::OsiIpoptSolverInterface():
 
 }
 
+OsiIpoptSolverInterface::OsiIpoptSolverInterface(
+				  OsiConicSolverInterface const * other) {
+  matrix_ = new CoinPackedMatrix(*(other->getMatrixByCol()));
+  int n = matrix_->getNumCols();
+  int m = matrix_->getNumRows();
+  collb_ = new double[n];
+  colub_ = new double[n];
+  rowlb_ = new double[m];
+  rowub_ = new double[m];
+  double const * other_collb = other->getColLower();
+  double const * other_colub = other->getColUpper();
+  double const * other_rowlb = other->getRowLower();
+  double const * other_rowub = other->getRowUpper();
+  std::copy(other_collb, other_collb+n, collb_);
+  std::copy(other_colub, other_colub+n, colub_);
+  std::copy(other_rowlb, other_rowlb+m, rowlb_);
+  std::copy(other_rowub, other_rowub+m, rowub_);
+  int other_num_cones = other->getNumCones();
+  for (int i=0; i<other_num_cones; ++i) {
+    // get conic constraint i
+    OsiLorentzConeType type;
+    int num_mem;
+    int * members;
+    other->getConicConstraint(i, type, num_mem, members);
+    // add conic constraint i
+    addConicConstraint(type, num_mem, members);
+  }
+}
+
 // destructor
 OsiIpoptSolverInterface::~OsiIpoptSolverInterface() {
   if(matrix_) {
