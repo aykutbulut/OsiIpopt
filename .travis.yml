@@ -1,0 +1,37 @@
+language: cpp
+
+compiler:
+  - gcc
+
+addons:
+  apt:
+    packages:
+    - gfortran
+
+before_script:
+  - svn co https://projects.coin-or.org/svn/CoinUtils/stable/2.10/CoinUtils CoinUtils
+  - svn co https://projects.coin-or.org/svn/Osi/stable/0.107/Osi Osi
+  - git clone https://github.com/aykutbulut/OSI-CONIC OsiConic
+  - svn co https://projects.coin-or.org/svn/Ipopt/releases/3.12.3/Ipopt Ipopt
+  - svn co https://projects.coin-or.org/svn/BuildTools/ThirdParty/ASL/stable/1.3    ThirdParty/ASL
+  - svn co https://projects.coin-or.org/svn/BuildTools/ThirdParty/Blas/stable/1.4   ThirdParty/Blas
+  - svn co https://projects.coin-or.org/svn/BuildTools/ThirdParty/HSL/stable/1.5    ThirdParty/HSL
+  - svn co https://projects.coin-or.org/svn/BuildTools/ThirdParty/Lapack/stable/1.5 ThirdParty/Lapack
+  - svn co https://projects.coin-or.org/svn/BuildTools/ThirdParty/Metis/stable/1.3  ThirdParty/Metis
+  - svn co https://projects.coin-or.org/svn/BuildTools/ThirdParty/Mumps/stable/1.5  ThirdParty/Mumps
+  - mkdir build
+  - cd ThirdParty/Blas && ./get.Blas && ./configure --prefix=/home/travis/aykut/OsiIpopt/build && make && make install && cd ../..
+  - cd ThirdParty/Lapack && ./get.Lapack && ./configure --prefix=/home/travis/aykut/OsiIpopt/build && make && make install && cd ../..
+  - cd ThirdParty/ASL && ./get.ASL && ./configure --prefix=/home/travis/aykut/OsiIpopt/build && make && make install && cd ../..
+  - cd ThirdParty/Metis && ./get.Metis && ./configure --prefix=/home/travis/aykut/OsiIpopt/build && make && make install && cd ../..
+  - cd ThirdParty/Mumps && ./get.Mumps && ./configure --prefix=/home/travis/aykut/OsiIpopt/build && make && make install && cd ../..
+  - cd CoinUtils && ./configure --prefix=/home/travis/aykut/OsiIpopt/build && make && make install && cd ..
+  - cd Osi && ./configure --prefix=/home/travis/aykut/OsiIpopt/build && make && make install && cd ..
+  - cd OsiConic && ./configure --prefix=/home/travis/aykut/OsiIpopt/build && make && make install && cd ..
+  - cd Ipopt && ./configure --prefix=/home/travis/aykut/OsiIpopt/build && make && make install && cd ..
+
+script: ./configure --prefix=/home/travis/aykut/OsiIpopt/build && make install
+
+os:
+  - linux
+  - osx
