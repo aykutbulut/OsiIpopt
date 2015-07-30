@@ -11,8 +11,6 @@ int main(int argc, char ** argv) {
   solver->initialSolve();
   std::cout << "Objective is " << std::setprecision(15)
 	    << solver->getObjValue() << std::endl;
-  // write mps file
-  solver->writeMps("problem");
   delete solver;
   return 0;
 }

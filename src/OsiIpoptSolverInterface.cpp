@@ -314,8 +314,9 @@ const double * OsiIpoptSolverInterface::getRowActivity() const {
 
 /// Get the objective function value.
 double OsiIpoptSolverInterface::getObjValue() const {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
-  return 0.0;
+  int n = matrix_->getNumCols();
+  double val = std::inner_product(obj_, obj_+n, solution_, 0.0);
+  return val;
 }
 
 /** Get the number of iterations it took to solve the problem (whatever
@@ -748,10 +749,10 @@ void OsiIpoptSolverInterface::addConicConstraint(OsiLorentzConeType type,
   }
   coneSize_[numCones_] = numMembers;
   if (type==OSI_QUAD) {
-    coneType_[numCones_] = 0;
+    coneType_[numCones_] = 1;
   }
   else if (type==OSI_RQUAD) {
-    coneType_[numCones_] = 0;
+    coneType_[numCones_] = 2;
   }
   else {
     throw IpoptException("!", __FILE__, __LINE__,
@@ -1146,8 +1147,8 @@ OsiIpoptSolverInterface::~OsiIpoptSolverInterface() {
     delete[] varType_;
     varType_ = 0;
   }
-  if (app_) {
-    delete app_;
-    app_ = 0;
-  }
+  // if (app_) {
+  //   delete app_;
+  //   app_ = 0;
+  // }
 }
