@@ -1,0 +1,12 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@/coin
+
+Name: OsiIpopt
+Description: Ipopt Solver Interface
+URL: https://github.com/aykutbulut/OsiIpopt
+Version: @PACKAGE_VERSION@
+Libs: -L${libdir} -lOsiIpopt @OSIIPOPTLIB_PCLIBS@
+Cflags: -I${includedir}
+Requires: @OSIIPOPTLIB_PCREQUIRES@
