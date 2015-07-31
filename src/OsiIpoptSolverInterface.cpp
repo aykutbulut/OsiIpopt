@@ -739,9 +739,18 @@ void OsiIpoptSolverInterface::addConicConstraint(OsiLorentzConeType type,
     std::copy(coneType_, coneType_+oldNumCones, newConeType);
     std::copy(coneMembers_, coneMembers_+oldNumCones, newConeMembers);
     // free old cone data structures
-    delete[] coneSize_;
-    delete[] coneType_;
-    delete[] coneMembers_;
+    if (coneSize_) {
+      delete[] coneSize_;
+      coneSize_ = 0;
+    }
+    if (coneType_) {
+      delete[] coneType_;
+      coneType_ = 0;
+    }
+    if (coneMembers_) {
+      delete[] coneMembers_;
+      coneMembers_ = 0;
+    }
     // assing new cone data
     coneSize_ = newConeSize;
     coneType_ = newConeType;
@@ -1118,6 +1127,17 @@ OsiIpoptSolverInterface::OsiIpoptSolverInterface(
   std::copy(other_colub, other_colub+n, colub_);
   std::copy(other_rowlb, other_rowlb+m, rowlb_);
   std::copy(other_rowub, other_rowub+m, rowub_);
+  double const * other_obj = other->getObjCoefficients();
+  obj_ = new double[n];
+  std::copy(other_obj, other_obj+n, obj_);
+  numCones_ = 0;
+  coneMemAllocated_ = 0;
+  coneSize_ = 0;
+  coneType_ = 0;
+  coneMembers_ = 0;
+  varType_ = new VarType[n];
+  // todo(aykut) set all variables to continuous for now
+  std::fill(varType_, varType_+n, CONTINUOUS);
   int other_num_cones = other->getNumCones();
   for (int i=0; i<other_num_cones; ++i) {
     // get conic constraint i
@@ -1127,6 +1147,18 @@ OsiIpoptSolverInterface::OsiIpoptSolverInterface(
     other->getConicConstraint(i, type, num_mem, members);
     // add conic constraint i
     addConicConstraint(type, num_mem, members);
+    delete[] members;
+  }
+  app_ = IpoptApplicationFactory();
+  // Initialize the IpoptApplication and process the options
+  //app->Options()->SetIntegerValue("max_iter", 50);
+  //app->Options()->SetStringValue("mehrotra_algorithm", "yes");
+  Ipopt::ApplicationReturnStatus status;
+  status = app_->Initialize();
+  if (status != Solve_Succeeded) {
+    std::cerr << "OsiIpopt: Error during initialization!" << std::endl;
+    throw IpoptException("Error during initialization!", __FILE__,
+			 __LINE__, std::string("OsiIpopt exception"));
   }
 }
 
