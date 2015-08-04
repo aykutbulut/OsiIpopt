@@ -58,8 +58,8 @@
 void OsiIpoptSolverInterface::initialSolve() {
   Ipopt::ApplicationReturnStatus status;
   TNLP * tnlp_p = dynamic_cast<TNLP*>(this);
-  status = app_->OptimizeTNLP(tnlp_p);
-  if (status == Solve_Succeeded) {
+  status_ = app_->OptimizeTNLP(tnlp_p);
+  if (status_ == Solve_Succeeded) {
     // Retrieve some statistics about the solve
     Index iter_count = app_->Statistics()->IterationCount();
     std::cout << "OsiIpopt: The problem solved in " << iter_count
@@ -82,38 +82,52 @@ void OsiIpoptSolverInterface::branchAndBound() {
 // Querrying solution status
 //#############################################################################
 bool OsiIpoptSolverInterface::isAbandoned() const {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
-  return 0;
+  if (status_==Solve_Succeeded)
+    return false;
+  else
+    return true;
 }
 
 bool OsiIpoptSolverInterface::isProvenOptimal() const {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
-  return 0;
+  if (status_==Solve_Succeeded)
+    return true;
+  else
+    return false;
 }
 
 bool OsiIpoptSolverInterface::isProvenPrimalInfeasible() const {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
-  return 0;
+  if (status_==Infeasible_Problem_Detected)
+    return true;
+  else
+    return false;
 }
 
 bool OsiIpoptSolverInterface::isProvenDualInfeasible() const {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
-  return 0;
+  if (status_==Infeasible_Problem_Detected)
+    return true;
+  else
+    return false;
 }
 
 bool OsiIpoptSolverInterface::isPrimalObjectiveLimitReached() const {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
-  return 0;
+  if (status_==Diverging_Iterates)
+    return true;
+  else
+    return false;
 }
 
 bool OsiIpoptSolverInterface::isDualObjectiveLimitReached() const {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
-  return 0;
+  if (status_==Diverging_Iterates)
+    return true;
+  else
+    return false;
 }
 
 bool OsiIpoptSolverInterface::isIterationLimitReached() const {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
-  return 0;
+  if (status_==Maximum_Iterations_Exceeded)
+    return true;
+  else
+    return false;
 }
 
 //#############################################################################

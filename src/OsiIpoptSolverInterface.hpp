@@ -35,6 +35,7 @@ class OsiIpoptSolverInterface: virtual public OsiConicSolverInterface,
   VarType * varType_;
   double * solution_;
   IpoptApplication * app_;
+  ApplicationReturnStatus status_;
 public:
   //***************************************************************************
   //***************************************************************************
