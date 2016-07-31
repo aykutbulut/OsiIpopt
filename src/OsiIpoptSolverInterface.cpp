@@ -457,7 +457,7 @@ bool OsiIpoptSolverInterface::setHintParam(OsiHintParam key,
     solution in any way is solver-dependent.
 */
 void OsiIpoptSolverInterface::setColSolution(const double *colsol)  {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
+  // do nothing or now
 }
 
 /** Set dual solution variable values
