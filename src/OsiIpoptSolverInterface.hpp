@@ -19,6 +19,7 @@ using namespace Ipopt;
 class OsiIpoptSolverInterface: virtual public OsiConicSolverInterface,
                                public TNLP {
   CoinPackedMatrix * matrix_;
+  CoinPackedMatrix * rev_matrix_;
   double * rowlb_;
   double * rowub_;
   double * collb_;
@@ -147,14 +148,14 @@ public:
     appropriate type for the solver, which can then be resized and modified
     as desired.
   */
-  virtual CoinWarmStart *getEmptyWarmStart () const;
+  virtual CoinWarmStart *getEmptyWarmStart () const {return NULL;}
   /** \brief Get warm start information.
 
       Return warm start information for the current state of the solver
       interface. If there is no valid warm start information, an empty warm
       start object wil be returned.
   */
-  virtual CoinWarmStart* getWarmStart() const;
+  virtual CoinWarmStart* getWarmStart() const {}
   /** \brief Set warm start information.
 
       Return true or false depending on whether the warm start information was
@@ -163,7 +164,7 @@ public:
       cause the solver interface to refresh its warm start information
       from the underlying solver.
   */
-  virtual bool setWarmStart(const CoinWarmStart* warmstart);
+  virtual bool setWarmStart(const CoinWarmStart* warmstart) {}
   //@}
 
   //---------------------------------------------------------------------------
@@ -253,6 +254,12 @@ public:
   /// Get the solver's value for infinity
   virtual double getInfinity() const;
   //@}
+
+    // hot start methods
+  // over-write linear mosek solver interface functions
+  virtual void markHotStart() {}
+  virtual void solveFromHotStart() { resolve(); }
+  virtual void unmarkHotStart() {}
 
   /**@name Solution query methods */
   //@{

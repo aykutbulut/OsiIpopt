@@ -59,15 +59,6 @@ void OsiIpoptSolverInterface::initialSolve() {
   Ipopt::ApplicationReturnStatus status;
   TNLP * tnlp_p = dynamic_cast<TNLP*>(this);
   status_ = app_->OptimizeTNLP(tnlp_p);
-  if (status_ == Solve_Succeeded) {
-    // Retrieve some statistics about the solve
-    Index iter_count = app_->Statistics()->IterationCount();
-    std::cout << "OsiIpopt: The problem solved in " << iter_count
-	      << " iterations!" << std::endl;
-    Number final_obj = app_->Statistics()->FinalObjective();
-    std::cout << "OsiIpopt: The final value of the objective function is "
-	      << final_obj << '.' << std::endl;
-  }
 }
 
 void OsiIpoptSolverInterface::resolve() {
@@ -82,14 +73,15 @@ void OsiIpoptSolverInterface::branchAndBound() {
 // Querrying solution status
 //#############################################################################
 bool OsiIpoptSolverInterface::isAbandoned() const {
-  if (status_==Solve_Succeeded)
+  if (status_==Solve_Succeeded or status_==Solved_To_Acceptable_Level
+      or status_==Infeasible_Problem_Detected)
     return false;
   else
     return true;
 }
 
 bool OsiIpoptSolverInterface::isProvenOptimal() const {
-  if (status_==Solve_Succeeded)
+  if (status_==Solve_Succeeded or status_==Solved_To_Acceptable_Level)
     return true;
   else
     return false;
@@ -131,24 +123,6 @@ bool OsiIpoptSolverInterface::isIterationLimitReached() const {
 }
 
 //#############################################################################
-// Warm Start methods
-//#############################################################################
-CoinWarmStart * OsiIpoptSolverInterface::getEmptyWarmStart () const {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
-  return 0;
-}
-
-CoinWarmStart * OsiIpoptSolverInterface::getWarmStart() const {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
-  return 0;
-}
-
-bool OsiIpoptSolverInterface::setWarmStart(const CoinWarmStart* warmstart) {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
-  return 0;
-}
-
-//#############################################################################
 // Problem Query methods
 //#############################################################################
 /// Get the number of columns
@@ -171,14 +145,12 @@ int OsiIpoptSolverInterface::getNumElements() const {
 
 /// Get a pointer to an array[getNumCols()] of column lower bounds
 const double * OsiIpoptSolverInterface::getColLower() const {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
-  return 0;
+  return collb_;
 }
 
 /// Get a pointer to an array[getNumCols()] of column upper bounds
 const double * OsiIpoptSolverInterface::getColUpper() const {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
-  return 0;
+  return colub_;
 }
 
 /*! \brief Get a pointer to an array[getNumRows()] of row constraint senses.
@@ -230,14 +202,12 @@ const double * OsiIpoptSolverInterface::getRowRange() const {
 
 /// Get a pointer to an array[getNumRows()] of row lower bounds
 const double * OsiIpoptSolverInterface::getRowLower() const {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
-  return 0;
+  return rowlb_;
 }
 
 /// Get a pointer to an array[getNumRows()] of row upper bounds
 const double * OsiIpoptSolverInterface::getRowUpper() const {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
-  return 0;
+  return rowub_;
 }
 
 /*! \brief Get a pointer to an array[getNumCols()] of objective
@@ -254,8 +224,7 @@ const double * OsiIpoptSolverInterface::getObjCoefficients() const {
     - -1 for maximisation
 */
 double OsiIpoptSolverInterface::getObjSense() const {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
-  return 0.0;
+  return 1.0;
 }
 
 /// Return true if the variable is continuous
@@ -275,20 +244,27 @@ bool OsiIpoptSolverInterface::isBinary(int colIndex) const {
   This method returns true if the variable is binary or general integer.
 */
 bool OsiIpoptSolverInterface::isInteger(int colIndex) const {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
-  return 0;
+  bool res = false;
+  if (varType_[colIndex] == INTEGER) {
+    res = true;
+  }
+  return res;
 }
 
 /// Get a pointer to a row-wise copy of the matrix
 const CoinPackedMatrix * OsiIpoptSolverInterface::getMatrixByRow() const {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
-  return 0;
+  if (matrix_->isColOrdered()) {
+    return rev_matrix_;
+  }
+  return matrix_;
 }
 
 /// Get a pointer to a column-wise copy of the matrix
 const CoinPackedMatrix * OsiIpoptSolverInterface::getMatrixByCol() const {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
-  return 0;
+  if (matrix_->isColOrdered()) {
+    return matrix_;
+  }
+  return rev_matrix_;
 }
 
 /// Get the solver's value for infinity
@@ -337,8 +313,8 @@ double OsiIpoptSolverInterface::getObjValue() const {
     `iteration' means to the solver).
 */
 int OsiIpoptSolverInterface::getIterationCount() const {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
-  return 0;
+
+  return app_->Statistics()->IterationCount();
 }
 
 /** Get as many dual rays as the solver can provide. In case of proven
@@ -411,35 +387,43 @@ void OsiIpoptSolverInterface::setObjCoeff( int elementIndex,
     new problem.
 */
 void OsiIpoptSolverInterface::setObjSense(double s) {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
+  if (s==1.0) {
+    // all is fine, no need to do anything.
+  }
+  else if (s==-1) {
+    throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
+  }
+  else {
+    throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
+  }
 }
 
 /** Set a single column lower bound.
     Use -getInfinity() for -infinity. */
 void OsiIpoptSolverInterface::setColLower( int elementIndex,
 					   double elementValue ) {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
+  collb_[elementIndex] = elementValue;
 }
 
 /** Set a single column upper bound.
     Use getInfinity() for infinity. */
 void OsiIpoptSolverInterface::setColUpper( int elementIndex,
 					   double elementValue ) {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
+  colub_[elementIndex] = elementValue;
 }
 
 /** Set a single row lower bound.
     Use -getInfinity() for -infinity. */
 void OsiIpoptSolverInterface::setRowLower( int elementIndex,
 					   double elementValue ) {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
+  rowlb_[elementIndex] = elementValue;
 }
 
 /** Set a single row upper bound.
     Use getInfinity() for infinity. */
 void OsiIpoptSolverInterface::setRowUpper( int elementIndex,
 					   double elementValue ) {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
+  rowub_[elementIndex] = elementValue;
 }
 
 /** Set the type of a single row */
@@ -572,6 +556,8 @@ void OsiIpoptSolverInterface::loadProblem (
   if (matrix_)
     delete matrix_;
   matrix_ = new CoinPackedMatrix(matrix);
+  rev_matrix_ = new CoinPackedMatrix();
+  rev_matrix_->reverseOrderedCopyOf(matrix);
   int m = matrix_->getNumRows();
   int n = matrix_->getNumCols();
   if (collb_)
@@ -1112,6 +1098,7 @@ void OsiIpoptSolverInterface::finalize_solution(
 OsiIpoptSolverInterface::OsiIpoptSolverInterface():
   //  OsiConicSolverInterface(),
   matrix_(0),
+  rev_matrix_(0),
   rowlb_(0),
   rowub_(0),
   collb_(0),
@@ -1141,6 +1128,7 @@ OsiIpoptSolverInterface::OsiIpoptSolverInterface():
 OsiIpoptSolverInterface::OsiIpoptSolverInterface(
 				  OsiConicSolverInterface const * other) {
   matrix_ = new CoinPackedMatrix(*(other->getMatrixByCol()));
+  rev_matrix_ = new CoinPackedMatrix(*(other->getMatrixByRow()));
   int n = matrix_->getNumCols();
   int m = matrix_->getNumRows();
   collb_ = new double[n];
@@ -1195,6 +1183,10 @@ OsiIpoptSolverInterface::~OsiIpoptSolverInterface() {
   if(matrix_) {
     delete matrix_;
     matrix_ = 0;
+  }
+  if(rev_matrix_) {
+    delete rev_matrix_;
+    rev_matrix_ = 0;
   }
   if(rowlb_) {
     delete rowlb_;
