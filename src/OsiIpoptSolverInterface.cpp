@@ -1122,6 +1122,9 @@ OsiIpoptSolverInterface::OsiIpoptSolverInterface():
     throw IpoptException("Error during initialization!", __FILE__,
 			 __LINE__, std::string("OsiIpopt exception"));
   }
+  // set iteration limit
+  app_->Options()->SetIntegerValue("max_iter", 200);
+  app_->Options()->SetNumericValue("tol", 1e-5);
 
 }
 
