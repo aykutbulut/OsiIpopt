@@ -355,6 +355,12 @@ public:
   /** Set the type of a single row */
   virtual void setRowType(int index, char sense, double rightHandSide,
 			  double range);
+
+  /// Set a hint parameter
+  virtual bool setHintParam(OsiHintParam key, bool yesNo=true,
+                            OsiHintStrength strength=OsiHintTry,
+                            void * otherInformation = NULL);
+
   /** Set the primal solution variable values
 
       colsol[getNumCols()] is an array of values for the primal variables.

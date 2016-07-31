@@ -449,6 +449,20 @@ void OsiIpoptSolverInterface::setRowType(int index, char sense,
   throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
 }
 
+/// Set a hint parameter
+bool OsiIpoptSolverInterface::setHintParam(OsiHintParam key,
+                      bool yesNo,
+                      OsiHintStrength strength,
+                      void * otherInformation) {
+  if (key==OsiDoReducePrint and yesNo) {
+    app_->Options()->SetIntegerValue("print_level", 0);
+  }
+  else {
+    throw IpoptException("Not implemented yet!", __FILE__, __LINE__,
+                         std::string("OsiIpopt exception"));
+  }
+}
+
 /** Set the primal solution variable values
 
     colsol[getNumCols()] is an array of values for the primal variables.
