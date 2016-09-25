@@ -21,7 +21,7 @@
 // the NLP problem we have is as follows,
 // min c^Tx
 // s.t. lb <= Ax <= ub
-//      x^1 in L^1, ie. 2x^1_1 ^2 - x^{1T}x^1 >= 0
+//      x^1 in L^1, ie. x^1_1 ^2 - x^{1T}x^1 >= 0
 //      x^2 in L^2
 //      .
 //      .
@@ -31,7 +31,10 @@
 // f(x) = c^Tx
 // grad_f(x) = c
 // h(x) = 0
-// g(x) = [Ax; x^1_1 - x^1_2 ... - x^1_{n_1};...; x^k_1 - x^k_2 ... - x^k_{n_k}
+// g(x) = [Ax                                                 ]
+//        [-x^{1T} Jx^{1} 0                     0             ]
+//        [ 0             -x^{2T} Jx^{2} 0      0             ]
+//        [                                     -x^{kT}Jx^{k} ]
 // gl = [lb; 0]
 // gu = [ub; inf]
 // J(x) = [A                                                                                   ;
@@ -56,12 +59,14 @@
 // Solve methods
 //#############################################################################
 void OsiIpoptSolverInterface::initialSolve() {
+  app_->Options()->SetIntegerValue("print_level", 0);
   Ipopt::ApplicationReturnStatus status;
   TNLP * tnlp_p = dynamic_cast<TNLP*>(this);
   status_ = app_->OptimizeTNLP(tnlp_p);
 }
 
 void OsiIpoptSolverInterface::resolve() {
+  app_->Options()->SetIntegerValue("print_level", 0);
   initialSolve();
 }
 
@@ -214,8 +219,11 @@ const double * OsiIpoptSolverInterface::getRowUpper() const {
     function coefficients.
 */
 const double * OsiIpoptSolverInterface::getObjCoefficients() const {
-  throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
-  return 0;
+  if (obj_==NULL) {
+    throw IpoptException("Objctive coef not allocated!", __FILE__,
+                         __LINE__, std::string("OsiIpopt exception"));
+  }
+  return obj_;
 }
 
 /*! \brief Get the objective function sense
@@ -305,7 +313,10 @@ const double * OsiIpoptSolverInterface::getRowActivity() const {
 /// Get the objective function value.
 double OsiIpoptSolverInterface::getObjValue() const {
   int n = matrix_->getNumCols();
-  double val = std::inner_product(obj_, obj_+n, solution_, 0.0);
+  double val = 1e+30;
+  if (solution_) {
+     val = std::inner_product(obj_, obj_+n, solution_, 0.0);
+  }
   return val;
 }
 
@@ -340,8 +351,8 @@ int OsiIpoptSolverInterface::getIterationCount() const {
     infeasible.
 */
 std::vector<double*> OsiIpoptSolverInterface::getDualRays(
-					  int maxNumRays,
-					  bool fullRay) const {
+                                          int maxNumRays,
+                                          bool fullRay) const {
   throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
   std::vector<double*> rays;
   return rays;
@@ -374,7 +385,7 @@ std::vector<double*> OsiIpoptSolverInterface::getPrimalRays(
 //#############################################################################
 /** Set an objective function coefficient */
 void OsiIpoptSolverInterface::setObjCoeff( int elementIndex,
-					   double elementValue ) {
+                                           double elementValue ) {
   throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
 }
 
@@ -401,35 +412,35 @@ void OsiIpoptSolverInterface::setObjSense(double s) {
 /** Set a single column lower bound.
     Use -getInfinity() for -infinity. */
 void OsiIpoptSolverInterface::setColLower( int elementIndex,
-					   double elementValue ) {
+                                           double elementValue ) {
   collb_[elementIndex] = elementValue;
 }
 
 /** Set a single column upper bound.
     Use getInfinity() for infinity. */
 void OsiIpoptSolverInterface::setColUpper( int elementIndex,
-					   double elementValue ) {
+                                           double elementValue ) {
   colub_[elementIndex] = elementValue;
 }
 
 /** Set a single row lower bound.
     Use -getInfinity() for -infinity. */
 void OsiIpoptSolverInterface::setRowLower( int elementIndex,
-					   double elementValue ) {
+                                           double elementValue ) {
   rowlb_[elementIndex] = elementValue;
 }
 
 /** Set a single row upper bound.
     Use getInfinity() for infinity. */
 void OsiIpoptSolverInterface::setRowUpper( int elementIndex,
-					   double elementValue ) {
+                                           double elementValue ) {
   rowub_[elementIndex] = elementValue;
 }
 
 /** Set the type of a single row */
 void OsiIpoptSolverInterface::setRowType(int index, char sense,
-					 double rightHandSide,
-		double range) {
+                                         double rightHandSide,
+                double range) {
   throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
 }
 
@@ -438,8 +449,13 @@ bool OsiIpoptSolverInterface::setHintParam(OsiHintParam key,
                       bool yesNo,
                       OsiHintStrength strength,
                       void * otherInformation) {
-  if (key==OsiDoReducePrint and yesNo) {
-    app_->Options()->SetIntegerValue("print_level", 0);
+  if (key==OsiDoReducePrint) {
+    if (yesNo) {
+      app_->Options()->SetIntegerValue("print_level", 0);
+    }
+    else {
+      app_->Options()->SetIntegerValue("print_level", 5);
+    }
   }
   else {
     throw IpoptException("Not implemented yet!", __FILE__, __LINE__,
@@ -491,8 +507,8 @@ void OsiIpoptSolverInterface::setInteger(int index) {
 //#############################################################################
 /** Add a column (primal variable) to the problem. */
 void OsiIpoptSolverInterface::addCol(const CoinPackedVectorBase& vec,
-	    const double collb, const double colub,
-	    const double obj) {
+            const double collb, const double colub,
+            const double obj) {
   throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
 }
 
@@ -503,20 +519,20 @@ void OsiIpoptSolverInterface::addCol(const CoinPackedVectorBase& vec,
     warm start information if all deleted variables are nonbasic.
 */
 void OsiIpoptSolverInterface::deleteCols(const int num,
-					 const int * colIndices) {
+                                         const int * colIndices) {
   throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
 }
 
 /*! \brief Add a row (constraint) to the problem. */
 void OsiIpoptSolverInterface::addRow(const CoinPackedVectorBase& vec,
-	    const double rowlb, const double rowub) {
+            const double rowlb, const double rowub) {
   throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
 }
 
 /*! \brief Add a row (constraint) to the problem. */
 void OsiIpoptSolverInterface::addRow(const CoinPackedVectorBase& vec,
-				     const char rowsen, const double rowrhs,
-				     const double rowrng) {
+                                     const char rowsen, const double rowrhs,
+                                     const double rowrng) {
   throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
 }
 
@@ -526,7 +542,7 @@ void OsiIpoptSolverInterface::addRow(const CoinPackedVectorBase& vec,
     warm start information if all deleted rows are loose.
 */
 void OsiIpoptSolverInterface::deleteRows(const int num,
-					 const int * rowIndices) {
+                                         const int * rowIndices) {
   throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
 }
 
@@ -550,14 +566,23 @@ void OsiIpoptSolverInterface::deleteRows(const int num,
 */
 void OsiIpoptSolverInterface::loadProblem (
                        const CoinPackedMatrix& matrix,
-		       const double* collb, const double* colub,
-		       const double* obj,
-		       const double* rowlb, const double* rowub) {
+                       const double* collb, const double* colub,
+                       const double* obj,
+                       const double* rowlb, const double* rowub) {
   if (matrix_)
     delete matrix_;
-  matrix_ = new CoinPackedMatrix(matrix);
-  rev_matrix_ = new CoinPackedMatrix();
-  rev_matrix_->reverseOrderedCopyOf(matrix);
+  if (rev_matrix_)
+    delete rev_matrix_;
+  if (matrix.isColOrdered()) {
+    matrix_ = new CoinPackedMatrix(matrix);
+    rev_matrix_ = new CoinPackedMatrix();
+    rev_matrix_->reverseOrderedCopyOf(matrix);
+  }
+  else {
+    rev_matrix_ = new CoinPackedMatrix(matrix);
+    matrix_ = new CoinPackedMatrix();
+    matrix_->reverseOrderedCopyOf(matrix);
+  }
   int m = matrix_->getNumRows();
   int n = matrix_->getNumCols();
   if (collb_)
@@ -596,8 +621,8 @@ void OsiIpoptSolverInterface::loadProblem (
 */
 void OsiIpoptSolverInterface::assignProblem (
                             CoinPackedMatrix*& matrix,
-			    double*& collb, double*& colub, double*& obj,
-			    double*& rowlb, double*& rowub) {
+                            double*& collb, double*& colub, double*& obj,
+                            double*& rowlb, double*& rowub) {
   throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
 }
 
@@ -619,10 +644,10 @@ void OsiIpoptSolverInterface::assignProblem (
 */
 void OsiIpoptSolverInterface::loadProblem (
                           const CoinPackedMatrix& matrix,
-			  const double* collb, const double* colub,
-			  const double* obj,
-			  const char* rowsen, const double* rowrhs,
-			  const double* rowrng) {
+                          const double* collb, const double* colub,
+                          const double* obj,
+                          const char* rowsen, const double* rowrhs,
+                          const double* rowrng) {
   throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
 }
 
@@ -637,9 +662,9 @@ void OsiIpoptSolverInterface::loadProblem (
 */
 void OsiIpoptSolverInterface::assignProblem (
                                CoinPackedMatrix*& matrix,
-			       double*& collb, double*& colub, double*& obj,
-			       char*& rowsen, double*& rowrhs,
-			       double*& rowrng) {
+                               double*& collb, double*& colub, double*& obj,
+                               char*& rowsen, double*& rowrhs,
+                               double*& rowrng) {
   throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
 }
 
@@ -656,15 +681,15 @@ void OsiIpoptSolverInterface::assignProblem (
   argument values.
 */
 void OsiIpoptSolverInterface::loadProblem (const int numcols,
-					   const int numrows,
-					   const CoinBigIndex * start,
-					   const int* index,
-					   const double* value,
-					   const double* collb,
-					   const double* colub,
-					   const double* obj,
-					   const double* rowlb,
-					   const double* rowub) {
+                                           const int numrows,
+                                           const CoinBigIndex * start,
+                                           const int* index,
+                                           const double* value,
+                                           const double* collb,
+                                           const double* colub,
+                                           const double* obj,
+                                           const double* rowlb,
+                                           const double* rowub) {
   throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
 }
 
@@ -681,16 +706,16 @@ void OsiIpoptSolverInterface::loadProblem (const int numcols,
   argument values.
 */
 void OsiIpoptSolverInterface::loadProblem (const int numcols,
-					   const int numrows,
-					   const CoinBigIndex * start,
-					   const int* index,
-					   const double* value,
-					   const double* collb,
-					   const double* colub,
-					   const double* obj,
-					   const char* rowsen,
-					   const double* rowrhs,
-					   const double* rowrng) {
+                                           const int numrows,
+                                           const CoinBigIndex * start,
+                                           const int* index,
+                                           const double* value,
+                                           const double* collb,
+                                           const double* colub,
+                                           const double* obj,
+                                           const char* rowsen,
+                                           const double* rowrhs,
+                                           const double* rowrng) {
   throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
 }
 
@@ -701,8 +726,8 @@ void OsiIpoptSolverInterface::loadProblem (const int numcols,
   objective. If objSense is zero, the choice is left to the implementation.
 */
 void OsiIpoptSolverInterface::writeMps (const char * filename,
-					const char * extension,
-					double objSense) const {
+                                        const char * extension,
+                                        double objSense) const {
   throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
 }
 
@@ -724,20 +749,20 @@ void OsiIpoptSolverInterface::applyColCut( const OsiColCut & cc ) {
 //***************************************************************************
 //***************************************************************************
 void OsiIpoptSolverInterface::getConicConstraint(int index,
-						 OsiLorentzConeType & type,
-						 int & numMembers,
-						 int *& members) const {
+                                                 OsiLorentzConeType & type,
+                                                 int & numMembers,
+                                                 int *& members) const {
   throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
 }
 
 // add conic constraints
 // add conic constraint in lorentz cone form
 void OsiIpoptSolverInterface::addConicConstraint(OsiLorentzConeType type,
-						 int numMembers,
-						 const int * members) {
+                                                 int numMembers,
+                                                 const int * members) {
   if (numCones_>coneMemAllocated_) {
     throw IpoptException("Cone size cannot be greater than size of allocated memory!",
-			 __FILE__, __LINE__, std::string("OsiIpopt exception"));
+                         __FILE__, __LINE__, std::string("OsiIpopt exception"));
   }
   // check whether we have enough memory allocated
   if (numCones_==coneMemAllocated_) {
@@ -779,7 +804,7 @@ void OsiIpoptSolverInterface::addConicConstraint(OsiLorentzConeType type,
   }
   else {
     throw IpoptException("!", __FILE__, __LINE__,
-			 std::string("Unknown cone type!"));
+                         std::string("Unknown cone type!"));
   }
   coneMembers_[numCones_] = new int[numMembers];
   std::copy(members, members+numMembers, coneMembers_[numCones_]);
@@ -788,9 +813,9 @@ void OsiIpoptSolverInterface::addConicConstraint(OsiLorentzConeType type,
 
 // add conic constraint in |Ax-b| <= dx-h form
 void OsiIpoptSolverInterface::addConicConstraint(CoinPackedMatrix const * A,
-						 CoinPackedVector const * b,
-						 CoinPackedVector const * d,
-						 double h) {
+                                                 CoinPackedVector const * b,
+                                                 CoinPackedVector const * d,
+                                                 double h) {
   throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
 }
 
@@ -799,9 +824,9 @@ void OsiIpoptSolverInterface::removeConicConstraint(int index) {
 }
 
 void OsiIpoptSolverInterface::modifyConicConstraint(int index,
-						    OsiLorentzConeType type,
-						    int numMembers,
-						    const int * members) {
+                                                    OsiLorentzConeType type,
+                                                    int numMembers,
+                                                    const int * members) {
   throw IpoptException("Not implemented yet!", __FILE__, __LINE__, std::string("OsiIpopt exception"));
 }
 
@@ -843,9 +868,9 @@ OsiConicSolverInterface * OsiIpoptSolverInterface::clone(bool copyData) const {
 //***************************************************************************
 //***************************************************************************
 bool OsiIpoptSolverInterface::get_nlp_info(Index& n, Index& m,
-					   Index& nnz_jac_g,
-					   Index& nnz_h_lag,
-					   IndexStyleEnum& index_style) {
+                                           Index& nnz_jac_g,
+                                           Index& nnz_h_lag,
+                                           IndexStyleEnum& index_style) {
   // The problem described in CutProblem.hpp has size_ variables
   n = matrix_->getNumCols();
   //  nonzeros in the jacobian
@@ -859,16 +884,16 @@ bool OsiIpoptSolverInterface::get_nlp_info(Index& n, Index& m,
   for (int i=0; i<numCones_; ++i) {
     nnz_h_lag += coneSize_[i];
   }
-  // We use the standard fortran index style for row/col entries
+  // We use C index style for row/col entries
   index_style = TNLP::C_STYLE;
   return true;
 }
 
 /** Method to return the bounds for my problem */
 bool OsiIpoptSolverInterface::get_bounds_info(Index n, Number* x_l,
-					      Number* x_u,
-					      Index m, Number* g_l,
-					      Number* g_u) {
+                                              Number* x_u,
+                                              Index m, Number* g_l,
+                                              Number* g_u) {
   // here, the n and m we gave IPOPT in get_nlp_info are passed back to us.
   // If desired, we could assert to make sure they are what we think they are.
   assert(n == matrix_->getNumCols());
@@ -880,15 +905,15 @@ bool OsiIpoptSolverInterface::get_bounds_info(Index n, Number* x_l,
   for (int i=0; i<numCones_; ++i) {
     if (coneType_[i]==1) {
       if (collb_[coneMembers_[i][0]]<0.0) {
-	x_l[coneMembers_[i][0]] = 0.0;
+        x_l[coneMembers_[i][0]] = 0.0;
       }
     }
     else if (coneType_[i]==2) {
       if (collb_[coneMembers_[i][0]]<0.0) {
-	x_l[coneMembers_[i][0]] = 0.0;
+        x_l[coneMembers_[i][0]] = 0.0;
       }
       if (collb_[coneMembers_[i][1]]<0.0) {
-	x_l[coneMembers_[i][1]] = 0.0;
+        x_l[coneMembers_[i][1]] = 0.0;
       }
     }
   }
@@ -897,18 +922,18 @@ bool OsiIpoptSolverInterface::get_bounds_info(Index n, Number* x_l,
   std::copy(rowlb_, rowlb_+num_rows, g_l);
   std::fill(g_l+num_rows, g_l+m, 0.0);
   std::copy(rowub_, rowub_+num_rows, g_u);
-  std::fill(g_u+num_rows, g_u+m, +1.0e19);
+  std::fill(g_u+num_rows, g_u+m, 2e19);
   return true;
 }
 
 /** Method to return the starting point for the algorithm */
 bool OsiIpoptSolverInterface::get_starting_point(Index n, bool init_x,
-						 Number* x,
-						 bool init_z, Number* z_L,
-						 Number* z_U,
-						 Index m,
-						 bool init_lambda,
-						 Number* lambda) {
+                                                 Number* x,
+                                                 bool init_z, Number* z_L,
+                                                 Number* z_U,
+                                                 Index m,
+                                                 bool init_lambda,
+                                                 Number* lambda) {
   assert(init_x == true);
   assert(init_z == false);
   assert(init_lambda == false);
@@ -929,7 +954,7 @@ bool OsiIpoptSolverInterface::get_starting_point(Index n, bool init_x,
 
 /** Method to return the objective value */
 bool OsiIpoptSolverInterface::eval_f(Index n, const Number* x,
-				     bool new_x, Number& obj_value) {
+                                     bool new_x, Number& obj_value) {
   // compute c^Tx
   obj_value = std::inner_product(obj_, obj_+n, x, 0.0);
   return true;
@@ -937,14 +962,14 @@ bool OsiIpoptSolverInterface::eval_f(Index n, const Number* x,
 
 /** Method to return the gradient of the objective */
 bool OsiIpoptSolverInterface::eval_grad_f(Index n, const Number* x,
-					  bool new_x, Number* grad_f) {
+                                          bool new_x, Number* grad_f) {
   std::copy(obj_, obj_+n, grad_f);
   return true;
 }
 
 /** Method to return the constraint residuals */
 bool OsiIpoptSolverInterface::eval_g(Index n, const Number* x,
-				     bool new_x, Index m, Number* g) {
+                                     bool new_x, Index m, Number* g) {
   // first rows are Ax
   int num_rows = matrix_->getNumRows();
   double * Ax = new double[num_rows];
@@ -976,9 +1001,9 @@ bool OsiIpoptSolverInterface::eval_g(Index n, const Number* x,
  *   2) The values of the jacobian (if "values" is not NULL)
  */
 bool OsiIpoptSolverInterface::eval_jac_g(Index n, const Number* x, bool new_x,
-					 Index m, Index nele_jac,
-					 Index* iRow, Index *jCol,
-					 Number* values) {
+                                         Index m, Index nele_jac,
+                                         Index* iRow, Index *jCol,
+                                         Number* values) {
   int const * indices = matrix_->getIndices();
   double const * elements = matrix_->getElements();
   int num_rows = matrix_->getNumRows();
@@ -1009,20 +1034,20 @@ bool OsiIpoptSolverInterface::eval_jac_g(Index n, const Number* x, bool new_x,
     // end of matrix A, now insert for conic constraints
     for (int i=0; i<numCones_; ++i) {
       if (coneType_[i]==1) {
-	values[num_elem] = 2.0*x[coneMembers_[i][0]];
-	num_elem++;
-	start = 1;
+        values[num_elem] = 2.0*x[coneMembers_[i][0]];
+        num_elem++;
+        start = 1;
       }
       else if (coneType_[i]==2) {
-	values[num_elem] = 2.0*x[coneMembers_[i][1]];
-	num_elem++;
-	values[num_elem] = 2.0*x[coneMembers_[i][0]];
-	num_elem++;
-	start = 2;
+        values[num_elem] = 2.0*x[coneMembers_[i][1]];
+        num_elem++;
+        values[num_elem] = 2.0*x[coneMembers_[i][0]];
+        num_elem++;
+        start = 2;
       }
       for (int j=start; j<coneSize_[i]; ++j) {
-	values[num_elem] = -2.0*x[coneMembers_[i][j]];
-	num_elem++;
+        values[num_elem] = -2.0*x[coneMembers_[i][j]];
+        num_elem++;
       }
     }
   }
@@ -1034,11 +1059,11 @@ bool OsiIpoptSolverInterface::eval_jac_g(Index n, const Number* x, bool new_x,
  *   2) The values of the hessian of the lagrangian (if "values" is not NULL)
  */
 bool OsiIpoptSolverInterface::eval_h(Index n, const Number* x, bool new_x,
-				     Number obj_factor, Index m,
-				     const Number* lambda,
-				     bool new_lambda,
-				     Index nele_hess, Index* iRow,
-				     Index* jCol, Number* values) {
+                                     Number obj_factor, Index m,
+                                     const Number* lambda,
+                                     bool new_lambda,
+                                     Index nele_hess, Index* iRow,
+                                     Index* jCol, Number* values) {
   int num_elem = 0;
   int num_rows = matrix_->getNumRows();
   if (values==NULL) {
@@ -1059,11 +1084,11 @@ bool OsiIpoptSolverInterface::eval_h(Index n, const Number* x, bool new_x,
       std::fill(values+num_elem, values+num_elem+coneSize_[i], -2.0*dual);
       // change the value for the leading variable
       if (coneType_[i]==1) {
-	values[num_elem] = 2.0*dual;
+        values[num_elem] = 2.0*dual;
       }
       else if (coneType_[i]==2) {
-	values[num_elem] = 2.0*dual;
-	values[num_elem+1] = 2.0*dual;
+        values[num_elem] = 2.0*dual;
+        values[num_elem+1] = 2.0*dual;
       }
       num_elem += coneSize_[i];
     }
@@ -1075,14 +1100,14 @@ bool OsiIpoptSolverInterface::eval_h(Index n, const Number* x, bool new_x,
 TNLP can store/write the solution */
 void OsiIpoptSolverInterface::finalize_solution(
                                      SolverReturn status,
-				     Index n, const Number* x,
-				     const Number* z_L,
-				     const Number* z_U,
-				     Index m, const Number* g,
-				     const Number* lambda,
-				     Number obj_value,
-				     const IpoptData* ip_data,
-				     IpoptCalculatedQuantities* ip_cq) {
+                                     Index n, const Number* x,
+                                     const Number* z_L,
+                                     const Number* z_U,
+                                     Index m, const Number* g,
+                                     const Number* lambda,
+                                     Number obj_value,
+                                     const IpoptData* ip_data,
+                                     IpoptCalculatedQuantities* ip_cq) {
   // here is where we would store the solution to variables, or write to a file, etc
   // so we could use the solution.
   solution_ = new double[n];
@@ -1120,16 +1145,17 @@ OsiIpoptSolverInterface::OsiIpoptSolverInterface():
   if (status != Solve_Succeeded) {
     std::cerr << "OsiIpopt: Error during initialization!" << std::endl;
     throw IpoptException("Error during initialization!", __FILE__,
-			 __LINE__, std::string("OsiIpopt exception"));
+                         __LINE__, std::string("OsiIpopt exception"));
   }
   // set iteration limit
-  app_->Options()->SetIntegerValue("max_iter", 200);
+  //app_->Options()->SetIntegerValue("max_iter", 200);
+  //app_->Options()->SetStringValue("mehrotra_algorithm", "yes");
   app_->Options()->SetNumericValue("tol", 1e-5);
 
 }
 
 OsiIpoptSolverInterface::OsiIpoptSolverInterface(
-				  OsiConicSolverInterface const * other) {
+                                  OsiConicSolverInterface const * other) {
   matrix_ = new CoinPackedMatrix(*(other->getMatrixByCol()));
   rev_matrix_ = new CoinPackedMatrix(*(other->getMatrixByRow()));
   int n = matrix_->getNumCols();
@@ -1177,7 +1203,7 @@ OsiIpoptSolverInterface::OsiIpoptSolverInterface(
   if (status != Solve_Succeeded) {
     std::cerr << "OsiIpopt: Error during initialization!" << std::endl;
     throw IpoptException("Error during initialization!", __FILE__,
-			 __LINE__, std::string("OsiIpopt exception"));
+                         __LINE__, std::string("OsiIpopt exception"));
   }
 }
 
@@ -1236,3 +1262,42 @@ OsiIpoptSolverInterface::~OsiIpoptSolverInterface() {
   //   app_ = 0;
   // }
 }
+
+/** Method to return the starting point for the algorithm */
+// bool OsiIpoptSolverInterface::mid_point(Index n, bool init_x,
+//                                                  Number* x,
+//                                                  bool init_z, Number* z_L,
+//                                                  Number* z_U,
+//                                                  Index m,
+//                                                  bool init_lambda,
+//                                                  Number* lambda) {
+//   assert(init_x == true);
+//   assert(init_z == false);
+//   assert(init_lambda == false);
+//   // set starting point to ub+lb/2
+//   for (int i=0; i<n; ++i) {
+//     // what if bounds are infinity
+//     x[i] = (colub_[i]+collb_[i])/2.0;
+//   }
+//   // set cone leading variables
+//   for (int i=0; i<numCones_; ++i) {
+//     // get cone in an array
+//     double * par_x = new double[coneSize_[i]];
+//     for (int j=0; j<coneSize_[i]; ++j) {
+//       par_x[j] = x[coneMembers_[i][j]];
+//     }
+//     if (coneType_[i]==1) {
+//       double ssum = std::inner_product(par_x+1, par_x+coneSize_[i],
+//                                        par_x+1, 0.0);
+//       x[coneMembers_[i][0]] = sqrt(ssum);
+//     }
+//     else if (coneType_[i]==2) {
+//       double ssum = std::inner_product(par_x+2, par_x+coneSize_[i],
+//                                        par_x+2, 0.0);
+//       double val = sqrt(ssum/2.0);
+//       x[coneMembers_[i][0]] = val;
+//       x[coneMembers_[i][1]] = val;
+//     }
+//   }
+//   return true;
+// }
