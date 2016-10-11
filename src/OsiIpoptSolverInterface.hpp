@@ -37,6 +37,8 @@ class OsiIpoptSolverInterface: virtual public OsiConicSolverInterface,
   double * solution_;
   IpoptApplication * app_;
   ApplicationReturnStatus status_;
+  /// ipopt print level between 0 and 12.
+  int printLevel_;
 public:
   //***************************************************************************
   //***************************************************************************
@@ -155,7 +157,7 @@ public:
       interface. If there is no valid warm start information, an empty warm
       start object wil be returned.
   */
-  virtual CoinWarmStart* getWarmStart() const {}
+  virtual CoinWarmStart* getWarmStart() const { return NULL;}
   /** \brief Set warm start information.
 
       Return true or false depending on whether the warm start information was
@@ -164,7 +166,7 @@ public:
       cause the solver interface to refresh its warm start information
       from the underlying solver.
   */
-  virtual bool setWarmStart(const CoinWarmStart* warmstart) {}
+  virtual bool setWarmStart(const CoinWarmStart* warmstart) {return false;}
   //@}
 
   //---------------------------------------------------------------------------
@@ -304,7 +306,7 @@ public:
       infeasible.
   */
   virtual std::vector<double*> getDualRays(int maxNumRays,
-					   bool fullRay = false) const;
+                                           bool fullRay = false) const;
   /** Get as many primal rays as the solver can provide. In case of proven
       dual infeasibility there should (with high probability) be at least
       one.
@@ -361,7 +363,7 @@ public:
   virtual void setRowUpper( int elementIndex, double elementValue );
   /** Set the type of a single row */
   virtual void setRowType(int index, char sense, double rightHandSide,
-			  double range);
+                          double range);
 
   /// Set a hint parameter
   virtual bool setHintParam(OsiHintParam key, bool yesNo=true,
@@ -408,8 +410,8 @@ public:
   //@{
   /** Add a column (primal variable) to the problem. */
   virtual void addCol(const CoinPackedVectorBase& vec,
-		      const double collb, const double colub,
-		      const double obj);
+                      const double collb, const double colub,
+                      const double obj);
   /** \brief Remove a set of columns (primal variables) from the
       problem.
 
@@ -419,11 +421,11 @@ public:
   virtual void deleteCols(const int num, const int * colIndices);
   /*! \brief Add a row (constraint) to the problem. */
   virtual void addRow(const CoinPackedVectorBase& vec,
-		      const double rowlb, const double rowub);
+                      const double rowlb, const double rowub);
   /*! \brief Add a row (constraint) to the problem. */
   virtual void addRow(const CoinPackedVectorBase& vec,
-		      const char rowsen, const double rowrhs,
-		      const double rowrng);
+                      const char rowsen, const double rowrhs,
+                      const double rowrng);
   /** \brief Delete a set of rows (constraints) from the problem.
 
       The solver interface for a basis-oriented solver will maintain valid
@@ -452,9 +454,9 @@ public:
     constraint -infty <= ax <= infty. This is probably not what you want.
   */
   virtual void loadProblem (const CoinPackedMatrix& matrix,
-			    const double* collb, const double* colub,
-			    const double* obj,
-			    const double* rowlb, const double* rowub);
+                            const double* collb, const double* colub,
+                            const double* obj,
+                            const double* rowlb, const double* rowub);
   /*! \brief Load in a problem by assuming ownership of the arguments.
     The constraints on the rows are given by lower and upper bounds.
 
@@ -465,8 +467,8 @@ public:
     C++ <code>delete</code> and <code>delete[]</code> functions.
   */
   virtual void assignProblem (CoinPackedMatrix*& matrix,
-			      double*& collb, double*& colub, double*& obj,
-			      double*& rowlb, double*& rowub);
+                              double*& collb, double*& colub, double*& obj,
+                              double*& rowlb, double*& rowub);
   /*! \brief Load in a problem by copying the arguments.
     The constraints on the rows are given by sense/rhs/range triplets.
 
@@ -484,10 +486,10 @@ public:
     constraint ax >= 0.
   */
   virtual void loadProblem (const CoinPackedMatrix& matrix,
-			    const double* collb, const double* colub,
-			    const double* obj,
-			    const char* rowsen, const double* rowrhs,
-			    const double* rowrng);
+                            const double* collb, const double* colub,
+                            const double* obj,
+                            const char* rowsen, const double* rowrhs,
+                            const double* rowrng);
   /*! \brief Load in a problem by assuming ownership of the arguments.
     The constraints on the rows are given by sense/rhs/range triplets.
 
@@ -498,9 +500,9 @@ public:
     C++ <code>delete</code> and <code>delete[]</code> functions.
   */
   virtual void assignProblem (CoinPackedMatrix*& matrix,
-			      double*& collb, double*& colub, double*& obj,
-			      char*& rowsen, double*& rowrhs,
-			      double*& rowrng);
+                              double*& collb, double*& colub, double*& obj,
+                              char*& rowsen, double*& rowrhs,
+                              double*& rowrng);
   /*! \brief Load in a problem by copying the arguments. The constraint
     matrix is is specified with standard column-major
     column starts / row indices / coefficients vectors.
@@ -514,11 +516,11 @@ public:
     argument values.
   */
   virtual void loadProblem (const int numcols, const int numrows,
-			    const CoinBigIndex * start, const int* index,
-			    const double* value,
-			    const double* collb, const double* colub,
-			    const double* obj,
-			    const double* rowlb, const double* rowub);
+                            const CoinBigIndex * start, const int* index,
+                            const double* value,
+                            const double* collb, const double* colub,
+                            const double* obj,
+                            const double* rowlb, const double* rowub);
   /*! \brief Load in a problem by copying the arguments. The constraint
     matrix is is specified with standard column-major
     column starts / row indices / coefficients vectors.
@@ -532,12 +534,12 @@ public:
     argument values.
   */
   virtual void loadProblem (const int numcols, const int numrows,
-			    const CoinBigIndex * start, const int* index,
-			    const double* value,
-			    const double* collb, const double* colub,
-			    const double* obj,
-			    const char* rowsen, const double* rowrhs,
-			    const double* rowrng);
+                            const CoinBigIndex * start, const int* index,
+                            const double* value,
+                            const double* collb, const double* colub,
+                            const double* obj,
+                            const char* rowsen, const double* rowrhs,
+                            const double* rowrng);
   /*! \brief Write the problem in MPS format to the specified file.
 
     If objSense is non-zero, a value of -1.0 causes the problem to be
@@ -545,8 +547,8 @@ public:
     objective. If objSense is zero, the choice is left to the implementation.
   */
   virtual void writeMps (const char *filename,
-			 const char *extension = "mps",
-			 double objSense=0.0) const;
+                         const char *extension = "mps",
+                         double objSense=0.0) const;
   //---------------------------------------------------------------------------
 
   ///@name Protected methods of OsiSolverInterface
@@ -564,20 +566,20 @@ public:
   //***************************************************************************
   //***************************************************************************
   virtual void getConicConstraint(int index, OsiLorentzConeType & type,
-			  int & numMembers,
-			  int *& members) const;
+                          int & numMembers,
+                          int *& members) const;
   // add conic constraints
   // add conic constraint in lorentz cone form
   virtual void addConicConstraint(OsiLorentzConeType type,
-				  int numMembers,
-				  const int * members);
+                                  int numMembers,
+                                  const int * members);
   // add conic constraint in |Ax-b| <= dx-h form
   virtual void addConicConstraint(CoinPackedMatrix const * A, CoinPackedVector const * b,
-				  CoinPackedVector const * d, double h);
+                                  CoinPackedVector const * d, double h);
   virtual void removeConicConstraint(int index);
   virtual void modifyConicConstraint(int index, OsiLorentzConeType type,
-				     int numMembers,
-				     const int * members);
+                                     int numMembers,
+                                     const int * members);
   virtual int getNumCones() const;
   virtual int getConeSize(int i) const;
   virtual OsiConeType getConeType(int i) const;
@@ -628,8 +630,8 @@ public:
                                  Index n, const Number* x, const Number* z_L, const Number* z_U,
                                  Index m, const Number* g, const Number* lambda,
                                  Number obj_value,
-				 const IpoptData* ip_data,
-				 IpoptCalculatedQuantities* ip_cq);
+                                 const IpoptData* ip_data,
+                                 IpoptCalculatedQuantities* ip_cq);
 
   //***************************************************************************
   //***************************************************************************

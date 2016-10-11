@@ -59,14 +59,14 @@
 // Solve methods
 //#############################################################################
 void OsiIpoptSolverInterface::initialSolve() {
-  app_->Options()->SetIntegerValue("print_level", 0);
+  app_->Options()->SetIntegerValue("print_level", printLevel_);
   Ipopt::ApplicationReturnStatus status;
   TNLP * tnlp_p = dynamic_cast<TNLP*>(this);
   status_ = app_->OptimizeTNLP(tnlp_p);
 }
 
 void OsiIpoptSolverInterface::resolve() {
-  app_->Options()->SetIntegerValue("print_level", 0);
+  app_->Options()->SetIntegerValue("print_level", printLevel_);
   initialSolve();
 }
 
@@ -315,7 +315,7 @@ double OsiIpoptSolverInterface::getObjValue() const {
   int n = matrix_->getNumCols();
   double val = 1e+30;
   if (solution_) {
-     val = std::inner_product(obj_, obj_+n, solution_, 0.0);
+    val = std::inner_product(obj_, obj_+n, solution_, 0.0);
   }
   return val;
 }
@@ -451,10 +451,10 @@ bool OsiIpoptSolverInterface::setHintParam(OsiHintParam key,
                       void * otherInformation) {
   if (key==OsiDoReducePrint) {
     if (yesNo) {
-      app_->Options()->SetIntegerValue("print_level", 0);
+      printLevel_ = 0;
     }
     else {
-      app_->Options()->SetIntegerValue("print_level", 5);
+      printLevel_ = 5;
     }
   }
   else {
@@ -934,20 +934,25 @@ bool OsiIpoptSolverInterface::get_starting_point(Index n, bool init_x,
                                                  Index m,
                                                  bool init_lambda,
                                                  Number* lambda) {
-  assert(init_x == true);
-  assert(init_z == false);
-  assert(init_lambda == false);
-  std::fill(x, x+n, 1.0);
-  // set cone leading variables
-  for (int i=0; i<numCones_; ++i) {
-    if (coneType_[i]==1) {
-      x[coneMembers_[i][0]] = sqrt(double(coneSize_[i]));
+  if (solution_==NULL) {
+    assert(init_x == true);
+    assert(init_z == false);
+    assert(init_lambda == false);
+    std::fill(x, x+n, 1.0);
+    // set cone leading variables
+    for (int i=0; i<numCones_; ++i) {
+      if (coneType_[i]==1) {
+        x[coneMembers_[i][0]] = sqrt(double(coneSize_[i]));
+      }
+      else if (coneType_[i]==2) {
+        double val = sqrt(double(coneSize_[i])/2.0);
+        x[coneMembers_[i][0]] = val;
+        x[coneMembers_[i][1]] = val;
+      }
     }
-    else if (coneType_[i]==2) {
-      double val = sqrt(double(coneSize_[i])/2.0);
-      x[coneMembers_[i][0]] = val;
-      x[coneMembers_[i][1]] = val;
-    }
+  }
+  else {
+    std::copy(solution_, solution_+n, x);
   }
   return true;
 }
@@ -1151,7 +1156,8 @@ OsiIpoptSolverInterface::OsiIpoptSolverInterface():
   //app_->Options()->SetIntegerValue("max_iter", 200);
   //app_->Options()->SetStringValue("mehrotra_algorithm", "yes");
   app_->Options()->SetNumericValue("tol", 1e-5);
-
+  // default print level is 5
+  printLevel_ = 5;
 }
 
 OsiIpoptSolverInterface::OsiIpoptSolverInterface(
@@ -1205,6 +1211,7 @@ OsiIpoptSolverInterface::OsiIpoptSolverInterface(
     throw IpoptException("Error during initialization!", __FILE__,
                          __LINE__, std::string("OsiIpopt exception"));
   }
+  printLevel_ = 5;
 }
 
 // destructor
