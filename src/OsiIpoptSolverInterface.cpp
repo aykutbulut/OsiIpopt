@@ -11,48 +11,14 @@
 #include "OsiIpoptSolverInterface.hpp"
 
 // TODO(aykut):
-// 1. Implement initialSolve
-// 2. Implement loadProblem, done.
-// 2. Implement addConicConstraint, done.
-// 3. implement setColName
-// 4. implement setRowName
-// 5. implement setInteger
+// 1. implement setColName
+// 2. implement setRowName
 
-// the NLP problem we have is as follows,
-// min c^Tx
-// s.t. lb <= Ax <= ub
-//      x^1 in L^1, ie. x^1_1 ^2 - x^{1T}x^1 >= 0
-//      x^2 in L^2
-//      .
-//      .
-//      x^k in L^k
-//
-// Then following are the values needed for Ipopt at point x,
-// f(x) = c^Tx
-// grad_f(x) = c
-// h(x) = 0
-// g(x) = [Ax                                                 ]
-//        [-x^{1T} Jx^{1} 0                     0             ]
-//        [ 0             -x^{2T} Jx^{2} 0      0             ]
-//        [                                     -x^{kT}Jx^{k} ]
-// gl = [lb; 0]
-// gu = [ub; inf]
-// J(x) = [A                                                                                   ;
-//         2x^1_1 -2x^1_2 -2x^1_3 ... -2x^1_{n_1} 0       0      ...                          0;
-//         0       0       0 ...       0          2x^2_1 -2x^2_2 ... -2x^2_{n_2} 0 ... 0 0 ...0;
-//         .
-//         .
-//         0  0  0 ...  0 0  0 ...  0 0 ... 0                                            2x^k]
-// H(x) = [-2u_1 J   0       0   ...  0
-//          0       -2u_2 J  0   ...  0
-//          0        0      -2J  ...  0
-//          .   .
-//          .   .
-//          0   0      ...           -2u_k J]
-// where J is [-1 0; 0 I] with the right size, and u_i are the lagrange multipliers.
-//
+/**
+ **/
 
 
+#define EPSILON 1e-5
 #define CONE_CHUNK 100
 
 //#############################################################################
@@ -871,7 +837,6 @@ bool OsiIpoptSolverInterface::get_nlp_info(Index& n, Index& m,
                                            Index& nnz_jac_g,
                                            Index& nnz_h_lag,
                                            IndexStyleEnum& index_style) {
-  // The problem described in CutProblem.hpp has size_ variables
   n = matrix_->getNumCols();
   //  nonzeros in the jacobian
   m = matrix_->getNumRows() + numCones_;
@@ -882,7 +847,7 @@ bool OsiIpoptSolverInterface::get_nlp_info(Index& n, Index& m,
   // nonzeros in the hessian of the lagrangian
   nnz_h_lag = 0;
   for (int i=0; i<numCones_; ++i) {
-    nnz_h_lag += coneSize_[i];
+    nnz_h_lag += (coneSize_[i]-1)*(coneSize_[i]-1);
   }
   // We use C index style for row/col entries
   index_style = TNLP::C_STYLE;
@@ -920,9 +885,9 @@ bool OsiIpoptSolverInterface::get_bounds_info(Index n, Number* x_l,
   // bound on constraints
   int num_rows = matrix_->getNumRows();
   std::copy(rowlb_, rowlb_+num_rows, g_l);
-  std::fill(g_l+num_rows, g_l+m, 0.0);
+  std::fill(g_l+num_rows, g_l+m, -2e19);
   std::copy(rowub_, rowub_+num_rows, g_u);
-  std::fill(g_u+num_rows, g_u+m, 2e19);
+  std::fill(g_u+num_rows, g_u+m, 0.0);
   return true;
 }
 
@@ -982,21 +947,20 @@ bool OsiIpoptSolverInterface::eval_g(Index n, const Number* x,
   std::copy(Ax, Ax+num_rows, g);
   for (int i=0; i<numCones_; ++i) {
     int const * mem = coneMembers_[i];
-    double term1;
-    int start;
+    double term1 = 0.0;
+    int start = 1;
     if (coneType_[i]==1) {
-      term1 = x[mem[0]]*x[mem[0]];
-      start = 1;
+      for (int j=start; j<coneSize_[i]; ++j) {
+        term1 += x[mem[j]]*x[mem[j]];
+      }
+      term1 += EPSILON;
+      term1 = sqrt(term1);
+      term1 -= x[mem[0]];
     }
     else if (coneType_[i]==2) {
-      term1 = 2.0*x[mem[0]]*x[mem[1]];
-      start = 2;
+      std::cerr << "Not implemented yet!" << __FILE__
+                << __LINE__ << std::endl;
     }
-    double term2 = 0.0;
-    for (int j=start; j<coneSize_[i]; ++j) {
-      term2 += x[mem[j]]*x[mem[j]];
-    }
-    g[i+num_rows] = term1 - term2;
   }
   return true;
 }
@@ -1038,23 +1002,42 @@ bool OsiIpoptSolverInterface::eval_jac_g(Index n, const Number* x, bool new_x,
     int start;
     // end of matrix A, now insert for conic constraints
     for (int i=0; i<numCones_; ++i) {
+      double ti = 0.0;
+      double * x_par = new double[coneSize_[i]];
+      for (int j=0; j<coneSize_[i]; ++j) {
+        x_par[j] = x[coneMembers_[i][j]];
+      }
+      ti = std::inner_product(x_par+1, x_par+coneSize_[i], x_par+1, 0.0);
+      ti = sqrt(ti+EPSILON);
       if (coneType_[i]==1) {
-        values[num_elem] = 2.0*x[coneMembers_[i][0]];
+        values[num_elem] = -1.0;
         num_elem++;
         start = 1;
+        for (int j=start; j<coneSize_[i]; ++j) {
+          values[num_elem] = x_par[j]/ti;
+          num_elem++;
+        }
       }
       else if (coneType_[i]==2) {
-        values[num_elem] = 2.0*x[coneMembers_[i][1]];
-        num_elem++;
-        values[num_elem] = 2.0*x[coneMembers_[i][0]];
-        num_elem++;
-        start = 2;
+        delete[] x_par;
+        std::cerr << "Not implemented yet! " << __FILE__
+                  << __LINE__ << std::endl;
+        throw std::exception();
       }
-      for (int j=start; j<coneSize_[i]; ++j) {
-        values[num_elem] = -2.0*x[coneMembers_[i][j]];
-        num_elem++;
-      }
+      delete[] x_par;
     }
+    // debug print
+    // print Jacobian
+    // std::cout << "====================Jacobian====================" << std::endl;
+    // std::cout << n << " " << m << " " << nele_jac << std::endl;
+    // for (int i=0; i<num_elem; ++i) {
+    //   std::cout << values[i] << std::endl;
+    // }
+  }
+  if (num_elem!=nele_jac) {
+    std::cerr << "Something went wrong when computing Jacobian of "
+      "constraints. file: " << __FILE__
+      " line: "<< __LINE__ << std::endl;
   }
   return true;
 }
@@ -1075,9 +1058,19 @@ bool OsiIpoptSolverInterface::eval_h(Index n, const Number* x, bool new_x,
     // Hessian of the linear part is 0.
     // Relevant part corresponds to conic constraints.
     for (int i=0; i<numCones_; ++i) {
-      std::copy(coneMembers_[i], coneMembers_[i]+coneSize_[i], iRow+num_elem);
-      std::copy(coneMembers_[i], coneMembers_[i]+coneSize_[i], jCol+num_elem);
-      num_elem += coneSize_[i];
+      if (coneType_[i]==2) {
+        std::cerr << "Rotated cones are not implemented yet!" << std::endl;
+        throw std::exception();
+      }
+      else {
+        // for each cone i we have a square matrix from coneMembers_[i][1]
+        // to coneMembers[i][coneSize_[i]-1]
+        for (int j=1; j<coneSize_[i]; ++j) {
+          std::fill_n(iRow+num_elem, coneSize_[i]-1, j);
+          std::copy(coneMembers_[i]+1, coneMembers_[i]+coneSize_[i], jCol+num_elem);
+          num_elem += coneSize_[i] - 1;
+        }
+      }
     }
   }
   else {
@@ -1085,18 +1078,48 @@ bool OsiIpoptSolverInterface::eval_h(Index n, const Number* x, bool new_x,
     // Relevant part corresponds to conic constraints.
     for (int i=0; i<numCones_; ++i) {
       double dual = lambda[num_rows+i];
-      // fill -2dual for all cone members
-      std::fill(values+num_elem, values+num_elem+coneSize_[i], -2.0*dual);
-      // change the value for the leading variable
       if (coneType_[i]==1) {
-        values[num_elem] = 2.0*dual;
+        // get values of variables in the cone, except leading
+        double * x_par = new double[coneSize_[i]];
+        for (int j=0; j<coneSize_[i]; ++j) {
+          x_par[j] = x[coneMembers_[i][j]];
+        }
+        double ti = std::inner_product(x_par+1, x_par+coneSize_[i], x_par+1, 0.0);
+        ti += EPSILON;
+        ti = sqrt(ti);
+        // for each row
+        for (int j=1; j<coneSize_[i]; ++j) {
+          // for each column
+          for (int k=1; k<coneSize_[i]; ++k) {
+            if (j==k) {
+              values[num_elem++] = (ti*ti-x[j]*x[j])/(ti*ti*ti);
+            }
+            else {
+              values[num_elem++] = -x[j]*x[k]/(ti*ti*ti);
+            }
+          }
+        }
+        delete[] x_par;
       }
       else if (coneType_[i]==2) {
-        values[num_elem] = 2.0*dual;
-        values[num_elem+1] = 2.0*dual;
+        std::cerr << "Rotated cones are not implemented yet!" << std::endl;
+        throw std::exception();
       }
-      num_elem += coneSize_[i];
     }
+
+    // debug print
+    // print matrix H
+    // std::cout << "====================Hessian====================" << std::endl;
+    // for (int i=0; i<num_elem; ++i) {
+    //   //std::cout << iRow[i] << " " << jCol[i] << " " << values[i] <<
+    //   //std::endl;
+    //   std::cout << values[i] << std::endl;
+    // }
+  }
+  if (num_elem!=nele_hess) {
+    std::cerr << "Something went wrong when computing Hessian of "
+      "Lagrangian. file: " << __FILE__
+      " line: "<< __LINE__ << std::endl;
   }
   return true;
 }
