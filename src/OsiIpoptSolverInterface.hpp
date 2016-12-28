@@ -16,6 +16,138 @@ typedef enum {
 
 using namespace Ipopt;
 
+/** Conic solver interface that (implements OsiConicSolverInterface)
+for Ipopt. This library is experimental. We aim to solve Second Order Cone
+Optimiztion (SOCO) problems using Ipopt. Note that there are special
+implementations of Interior Point Method (IPM) for these type of problems.
+And Ipopt is intended for more general problems.
+
+Formulating Lorentz cones as \f$ x_1 \geq \|x_{2:n}\| \f$ is not ideal for Ipopt
+since Lorentz cones are not smooth at 0. Instead we will approximate Lorentz
+cone as follows
+
+\f{equation}{
+q(x) := \sqrt{ \sum_{i=2} ^n {x_i ^2} + \epsilon } - x_1 \leq 0.
+\f}
+
+Where \f$ \epsilon \f$ is a small number. Be aware, if you are using this
+solver in a branch and bound type algorithm where integrality of variables
+matters, integrality tolerance should be greater than \f$\sqrt{\epsilon}\f$,
+think of the case where \f$x_{2:n} = 0\f$ and Lorentz cone is binding. This
+means for integrality tolerance of \f$1e-5\f$, a safe choice of \f$ \epsilon
+\f$ is \f$ 1e-11\f$. This kind of small \f$ \epsilon \f$ might cause numerical
+problems for Ipopt, in case the optimal solution is close to \f$ 0\f$, but note
+that this formulation is still better, since the direct formulation would
+suffer even more in this case.
+
+Using the approximation we defined, SOCO problem can be given as follows
+(assuming all cones are regular, not rotated),
+
+\f{alignat}{{3}
+& \text{min}  &\quad  & c^\top x\\
+& \text{s.t.} &       & lb \leq Ax \leq ub \\
+&             &       &
+\sqrt{\sum _{i=2} ^n {\left(x ^j _i \right) ^2} + \epsilon } - x^j _1 \leq 0
+\quad j=1,\dots,k
+\f}
+
+Various functions should be computed at a given \f$x\f$ which are inputs to
+Ipopt. The meaning of these functions can be found at Ipopt documentation, <a
+href="https://www.coin-or.org/Ipopt/documentation/node22.html"> interfacing Ipopt</a>.
+
+Following are the values needed for Ipopt at point x,
+
+\f$
+f(x) = c^Tx,
+\f$
+
+\f$
+\text{grad\_f(x)} = c
+\f$
+
+
+\f{equation}{
+g(x) = \left[ \begin{array}{cccc}
+Ax \\
+q(x^1) & 0      & \dots  & 0 \\
+0      & q(x^2) & \dots  & 0 \\
+\vdots & \vdots & \ddots & 0 \\
+0      & 0      & \dots  & q(x^k)
+\end{array} \right]
+\f}
+
+\f$
+gl = \left[ \begin{array}{c} lb \\ -inf \end{array} \right]
+\f$
+
+\f$
+gu = \left[ \begin{array}{c} ub \\ 0 \end{array} \right]
+\f$
+
+\f{equation}{
+J(x) = \left[ \begin{array}{cccc|cccc|c|cccc}
+A \\
+-1 & \frac{x ^1 _2}{t_1} & \dots & \frac{x ^1 _{n_1}}{t_1} &  0 & 0 & \dots & 0
+& \dots  & 0 & \dots & 0 & 0 & \dots & 0 \\
+0 & 0 & \dots & 0 & -1 & \frac{x ^2 _2}{t_2} & \dots & \frac{x ^2 _{n_2}}{t_2}
+& \dots  & 0 & 0 & \dots & 0 \\
+\vdots & \vdots & \ddots & \vdots & \vdots & \vdots & \ddots & \vdots & \ddots
+& 0 & 0 & \dots & 0 \\
+0 & 0 & \dots & 0 & 0 & 0 & \dots & 0 & \dots & -1 & \frac{x ^k _2}{t_k} &
+\dots & \frac{x ^k _{n_k}}{t_k}
+\end{array} \right],
+\f}
+where \f$t_i\f$ is defined as follows,
+\f{equation}{
+t_i = \sqrt{ \sum _{j=2} ^{n_i} {\left( x^i _j \right) ^2} + \epsilon }.
+\f}
+
+Hessian can be given as follows,
+
+\f{equation}{
+H(x) = \left[ \begin{array}{cccc}
+u_1 H^1 & 0       & \dots  & 0 \\
+0       & u_2 H^2 & \dots  & 0 \\
+\vdots   & \vdots  & \ddots & 0 \\
+0       & 0       & 0      & u_k H^k
+\end{array} \right],
+\f}
+
+where \f$u_i\f$ is the Lagrangean variable corresponding to cone \f$i\f$
+and \f$H^i\f$ can be given as follows,
+
+\f{equation}{
+H^i(x) = \left[ \begin{array}{cccccc}
+0 & 0 & 0 & 0 & \dots & 0
+\\
+0 &
+\frac{t _i ^2 - \left(x^i _2 \right) ^2 }{t_i ^3} &
+\frac{-x^i _2 x^i _3}{t_i ^3} &
+\frac{-x^i _2 x^i _4}{t_i ^3} &
+\dots &
+\frac{-x^i _2 x^i _{n_i}}{t_i ^3}
+\\
+0 &
+\frac{-x^i _2 x^i _3}{t_i ^3} &
+\frac{t _i ^2 - \left(x^i _3 \right) ^2 }{t_i ^3} &
+\frac{-x^i _3 x^i _4}{t_i ^3} &
+\dots &
+\frac{-x^i _3 x^i _{n_i}}{t_i ^3}
+\\
+\vdots & \vdots & \vdots & \vdots & \ddots & \vdots
+\\
+0 &
+\frac{-x^i _2 x^i _{n_i}}{t_i ^3} &
+\frac{-x^i _3 x^i _{n_i}}{t_i ^3} &
+\frac{-x^i _4 x^i _{n_i}}{t_i ^3} &
+\dots &
+\frac{t _i ^2 - \left(x^i _{n_i} \right) ^2 }{t_i ^3}
+\end{array} \right],
+\f}
+
+
+ **/
+
 class OsiIpoptSolverInterface: virtual public OsiConicSolverInterface,
                                public TNLP {
   CoinPackedMatrix * matrix_;
