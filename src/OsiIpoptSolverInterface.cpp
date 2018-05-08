@@ -1140,6 +1140,7 @@ OsiIpoptSolverInterface::OsiIpoptSolverInterface():
   coneType_(0),
   coneMembers_(0),
   varType_(0),
+  solution_(0),
   app_(0) {
   app_ = IpoptApplicationFactory();
   // Initialize the IpoptApplication and process the options
@@ -1225,23 +1226,23 @@ OsiIpoptSolverInterface::~OsiIpoptSolverInterface() {
     rev_matrix_ = 0;
   }
   if(rowlb_) {
-    delete rowlb_;
+    delete[] rowlb_;
     rowlb_ = 0;
   }
   if(rowub_) {
-    delete rowub_;
+    delete[] rowub_;
     rowub_ = 0;
   }
   if(collb_) {
-    delete collb_;
+    delete[] collb_;
     collb_ = 0;
   }
   if(colub_) {
-    delete colub_;
+    delete[] colub_;
     colub_ = 0;
   }
   if(obj_) {
-    delete obj_;
+    delete[] obj_;
     obj_ = 0;
   }
   if (coneSize_) {
