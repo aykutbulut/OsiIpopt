@@ -52,10 +52,11 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-DIST_COMMON = $(am__configure_deps) $(srcdir)/BuildTools/Makemain.inc \
-	$(srcdir)/Makefile.am $(srcdir)/Makefile.in \
-	$(srcdir)/osiipopt-uninstalled.pc.in $(srcdir)/osiipopt.pc.in \
-	$(top_srcdir)/configure $(top_srcdir)/doxydoc/doxygen.conf.in \
+DIST_COMMON = README $(am__configure_deps) \
+	$(srcdir)/BuildTools/Makemain.inc $(srcdir)/Makefile.am \
+	$(srcdir)/Makefile.in $(srcdir)/osiipopt-uninstalled.pc.in \
+	$(srcdir)/osiipopt.pc.in $(top_srcdir)/configure \
+	$(top_srcdir)/doxydoc/doxygen.conf.in \
 	$(top_srcdir)/examples/Makefile.in AUTHORS INSTALL \
 	config.guess config.sub depcomp install-sh ltmain.sh missing
 @HAVE_EXTERNALS_TRUE@am__append_1 = Dependencies

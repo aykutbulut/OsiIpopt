@@ -17,7 +17,9 @@ lib_LTLIBRARIES = libOsiIpopt.la
 # List all source files for this library, including headers
 libOsiIpopt_la_SOURCES=\
 	OsiIpoptSolverInterface.hpp\
-	OsiIpoptSolverInterface.cpp
+	OsiIpoptSolverInterface.cpp\
+	OsiIpoptTNLP.hpp\
+        OsiIpoptTNLP.cpp
 
 # List all additionally required libraries
 if DEPENDENCY_LINKING
@@ -48,7 +50,8 @@ DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)`
 # and that therefore should be installed in 'include/coin'
 includecoindir = $(includedir)/coin
 includecoin_HEADERS = \
-	OsiIpoptSolverInterface.hpp
+	OsiIpoptSolverInterface.hpp\
+	OsiIpoptTNLP.hpp
 
 install-exec-local:
 	$(install_sh_DATA) config_osiipopt.h $(DESTDIR)$(includecoindir)/OsiIpoptConfig.h

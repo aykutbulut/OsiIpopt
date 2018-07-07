@@ -67,7 +67,7 @@ LTLIBRARIES = $(lib_LTLIBRARIES)
 am__DEPENDENCIES_1 =
 @DEPENDENCY_LINKING_TRUE@libOsiIpopt_la_DEPENDENCIES =  \
 @DEPENDENCY_LINKING_TRUE@	$(am__DEPENDENCIES_1)
-am_libOsiIpopt_la_OBJECTS = OsiIpoptSolverInterface.lo
+am_libOsiIpopt_la_OBJECTS = OsiIpoptSolverInterface.lo OsiIpoptTNLP.lo
 libOsiIpopt_la_OBJECTS = $(am_libOsiIpopt_la_OBJECTS)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -306,7 +306,9 @@ lib_LTLIBRARIES = libOsiIpopt.la
 # List all source files for this library, including headers
 libOsiIpopt_la_SOURCES = \
 	OsiIpoptSolverInterface.hpp\
-	OsiIpoptSolverInterface.cpp
+	OsiIpoptSolverInterface.cpp\
+	OsiIpoptTNLP.hpp\
+        OsiIpoptTNLP.cpp
 
 
 # List all additionally required libraries
@@ -337,7 +339,8 @@ DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)`
 # and that therefore should be installed in 'include/coin'
 includecoindir = $(includedir)/coin
 includecoin_HEADERS = \
-	OsiIpoptSolverInterface.hpp
+	OsiIpoptSolverInterface.hpp\
+	OsiIpoptTNLP.hpp
 
 all: config.h config_osiipopt.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
@@ -437,6 +440,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/OsiIpoptSolverInterface.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/OsiIpoptTNLP.Plo@am__quote@
 
 .cpp.o:
 @am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
