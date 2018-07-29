@@ -3,9 +3,9 @@ Data/Sample       https://projects.coin-or.org/svn/Data/Sample/stable/1.2
 ThirdParty/Blas   https://projects.coin-or.org/svn/BuildTools/ThirdParty/Blas/stable/1.4
 ThirdParty/Lapack https://projects.coin-or.org/svn/BuildTools/ThirdParty/Lapack/stable/1.5
 ThirdParty/Metis  https://projects.coin-or.org/svn/BuildTools/ThirdParty/Metis/stable/1.3
-ThirdParty/Mumps  https://projects.coin-or.org/svn/BuildTools/ThirdParty/Mumps/stable/1.5
+ThirdParty/Mumps  https://projects.coin-or.org/svn/BuildTools/ThirdParty/Mumps/trunk
 ThirdParty/ASL    https://projects.coin-or.org/svn/BuildTools/ThirdParty/ASL/stable/1.3
-CoinUtils         https://projects.coin-or.org/svn/CoinUtils/stable/2.10/CoinUtils
-Osi               https://projects.coin-or.org/svn/Osi/stable/0.107/Osi
+CoinUtils         https://projects.coin-or.org/svn/CoinUtils/trunk/CoinUtils
+Osi               https://projects.coin-or.org/svn/Osi/trunk/Osi
 OsiConic          https://github.com/aykutbulut/OSI-CONIC master
-Ipopt             https://projects.coin-or.org/svn/Ipopt/releases/3.12.3/Ipopt
+Ipopt             https://projects.coin-or.org/svn/Ipopt/trunk/Ipopt
