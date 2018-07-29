@@ -278,6 +278,8 @@ void OsiIpoptTNLP::finalize_solution(SolverReturn status,
                                      IpoptCalculatedQuantities* ip_cq) {
   // here is where we would store the solution to variables, or write to a file, etc
   // so we could use the solution.
-  solution_ = new double[n];
+  if (solution_==NULL) {
+    solution_ = new double[n];
+  }
   std::copy(x, x+n, solution_);
 }
