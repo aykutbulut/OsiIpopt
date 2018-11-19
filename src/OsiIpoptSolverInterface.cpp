@@ -470,6 +470,7 @@ bool OsiIpoptSolverInterface::setHintParam(OsiHintParam key,
     else {
       printLevel_ = 5;
     }
+    return true;
   }
   else {
     throw IpoptException("Not implemented yet!", __FILE__, __LINE__,
